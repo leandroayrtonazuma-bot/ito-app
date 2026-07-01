@@ -3,6 +3,24 @@
 大学の交流イベント向けの、ボードゲーム **ito** の「数字配布・お題表示」用 Web アプリです。
 参加者は **QRコードを読み取り → 名前を入れて参加ボタン** だけでプレイに参加できます。
 
+## ✅ デプロイ済み（このリポジトリはセットアップ完了状態です）
+
+- **公開URL（トップ）**: https://leandroayrtonazuma-bot.github.io/ito-app/
+- **管理画面**: https://leandroayrtonazuma-bot.github.io/ito-app/admin.html
+- **参加用URL（QR化して各机に掲示）**
+  - ルームA: `https://leandroayrtonazuma-bot.github.io/ito-app/index.html?room=A`
+  - ルームB: `.../index.html?room=B`
+  - ルームC: `.../index.html?room=C`
+  - ルームD: `.../index.html?room=D`
+  - ルームE: `.../index.html?room=E`
+- **Firebase プロジェクト**: `ito-event-9ifq4d`（Firestore 有効化・ルール適用済み・リージョン asia-northeast1）
+
+> 下記の「セットアップ手順」は、別環境でゼロから作り直す場合の参考です。
+> 既に上記プロジェクトで動作しているため、通常は読む必要はありません。
+
+---
+
+
 - フロントエンドのみ（HTML / CSS / Vanilla JS）
 - データはリアルタイム同期（Firebase Firestore の `onSnapshot`）
 - **GitHub Pages にアップロードするだけで動作**
@@ -155,9 +173,11 @@ npx serve
      git remote add origin https://github.com/ユーザー名/ito-app.git
      git push -u origin main
      ```
-   - ※ `.gitignore` により `firebase-config.js` は push されません。
-     GitHub Pages を動かすには設定値が必要なため、**別途アップロード**するか、
-     一時的に `.gitignore` から外してください（キーの公開に注意）。
+   - ※ このリポジトリでは `firebase-config.js` を**コミットして公開**しています。
+     GitHub Pages はブラウザに設定値を読み込ませる必要があるためです。
+     Firebase の Web 用 apiKey は秘密情報ではなく、データ保護は Firestore
+     セキュリティルールで行うため、公開して問題ありません。
+     （どうしても隠したい場合は `.gitignore` の該当行のコメントを外してください）
 3. リポジトリの「**Settings → Pages**」を開く
 4. 「Build and deployment」の Source を「**Deploy from a branch**」にする
 5. Branch を `main` / フォルダを `/ (root)` にして「Save」
