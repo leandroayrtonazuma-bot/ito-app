@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// ============================================================
+// Firestore セキュリティルール
+// ------------------------------------------------------------
+// このアプリはログイン（認証）を使わないイベント用の簡易構成です。
+// rooms 配下（部屋 + players）だけを読み書き可能にし、
+// それ以外のコレクションは全面禁止しています。
+//
+// ※「URL を知っていれば誰でも読み書きできる」ルールです。
+//   交流イベントの一時利用向け。終了後はデータ削除を推奨します。
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 部屋ドキュメントとその配下（players サブコレクション）
+    match /rooms/{roomId} {
+      allow read, write: if true;
+
+      match /players/{playerId} {
+        allow read, write: if true;
+      }
+    }
+
+    // 上記以外は全て禁止
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
