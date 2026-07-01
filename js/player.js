@@ -1,0 +1,180 @@
+// ============================================================
+// プレイヤー画面（player.html）のロジック
+// ------------------------------------------------------------
+// やること:
+//   1. 参加者IDを localStorage から取得（無ければ参加画面へ戻す）
+//   2. 部屋のお題・状態を onSnapshot でリアルタイム表示
+//   3. 自分の数字を onSnapshot でリアルタイム表示
+//   4. 数字の「隠す/表示」を切り替える（端末内だけの状態）
+// ============================================================
+
+import {
+  db,
+  getRoomIdFromUrl,
+  playerStorageKey,
+} from "./firebase.js";
+
+import {
+  doc,
+  onSnapshot,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ------------------------------------------------------------
+// DOM 取得
+// ------------------------------------------------------------
+const roomLabel = document.getElementById("roomLabel");
+const playerName = document.getElementById("playerName");
+const topicEl = document.getElementById("topic");
+const numberArea = document.getElementById("numberArea");
+const numberValue = document.getElementById("numberValue");
+const waitingMsg = document.getElementById("waitingMsg");
+const toggleButton = document.getElementById("toggleButton");
+const peekHint = document.getElementById("peekHint");
+const toast = document.getElementById("toast");
+
+// ------------------------------------------------------------
+// 前提チェック（部屋 & 参加者ID）
+// ------------------------------------------------------------
+const roomId = getRoomIdFromUrl();
+if (!roomId) {
+  // 部屋が不明 → 参加画面へ
+  window.location.replace("index.html");
+}
+
+const playerId = localStorage.getItem(playerStorageKey(roomId));
+if (!playerId) {
+  // まだ参加していない → 参加画面へ（room を引き継ぐ）
+  window.location.replace(`index.html?room=${roomId}`);
+}
+
+// 画面上部の表示
+roomLabel.textContent = roomId;
+playerName.textContent = localStorage.getItem(`ito_name_${roomId}`) || "";
+
+// ------------------------------------------------------------
+// 表示状態（この端末内だけで持つ）
+// ------------------------------------------------------------
+let isHidden = false; // 数字を隠しているか
+let currentNumber = null; // 今表示している数字
+let lastSeenNumber = null; // 直前に受け取った数字（配り直し検知用）
+
+// ------------------------------------------------------------
+// 部屋ドキュメントの購読（お題・状態）
+// ------------------------------------------------------------
+const roomRef = doc(db, "rooms", roomId);
+onSnapshot(
+  roomRef,
+  (snap) => {
+    if (!snap.exists()) {
+      topicEl.textContent = "…";
+      return;
+    }
+    const data = snap.data();
+    topicEl.textContent = data.currentTopic || "…";
+  },
+  (err) => {
+    console.error("部屋の購読に失敗:", err);
+    showToast("通信エラーが発生しました");
+  }
+);
+
+// ------------------------------------------------------------
+// 自分の参加者ドキュメントの購読（数字）
+// ------------------------------------------------------------
+const playerRef = doc(db, "rooms", roomId, "players", playerId);
+onSnapshot(
+  playerRef,
+  (snap) => {
+    if (!snap.exists()) {
+      // 自分のデータが消えた（部屋がリセットされた等）→ 参加画面へ
+      localStorage.removeItem(playerStorageKey(roomId));
+      window.location.replace(`index.html?room=${roomId}`);
+      return;
+    }
+    const data = snap.data();
+    // 名前が更新されている可能性に備えて反映
+    if (data.name) playerName.textContent = data.name;
+    updateNumber(data.number);
+  },
+  (err) => {
+    console.error("自分のデータの購読に失敗:", err);
+    showToast("通信エラーが発生しました");
+  }
+);
+
+// ------------------------------------------------------------
+// 数字表示の更新
+// ------------------------------------------------------------
+function updateNumber(number) {
+  currentNumber = number;
+
+  const hasNumber = number !== null && number !== undefined;
+
+  if (!hasNumber) {
+    // まだ数字が配られていない
+    numberValue.textContent = "--";
+    numberArea.classList.remove("number-area--hidden");
+    waitingMsg.hidden = false;
+    toggleButton.hidden = true;
+    peekHint.hidden = true;
+    lastSeenNumber = null;
+    return;
+  }
+
+  // 新しい数字が配られたら、自動的に「表示」状態にリセット
+  if (number !== lastSeenNumber) {
+    isHidden = false;
+    lastSeenNumber = number;
+    // 新しい数字の到着を軽く知らせる
+    numberArea.classList.remove("pop");
+    void numberArea.offsetWidth; // アニメーション再生のためリフロー
+    numberArea.classList.add("pop");
+  }
+
+  waitingMsg.hidden = true;
+  toggleButton.hidden = false;
+  peekHint.hidden = false;
+
+  renderNumber();
+}
+
+// 現在の isHidden 状態に応じて数字か「???」を表示
+function renderNumber() {
+  if (isHidden) {
+    numberValue.textContent = "???";
+    numberArea.classList.add("number-area--hidden");
+    toggleButton.textContent = "数字を表示";
+  } else {
+    numberValue.textContent = String(currentNumber);
+    numberArea.classList.remove("number-area--hidden");
+    toggleButton.textContent = "数字を隠す";
+  }
+}
+
+// ------------------------------------------------------------
+// 表示/非表示の切替
+// ------------------------------------------------------------
+toggleButton.addEventListener("click", () => {
+  isHidden = !isHidden;
+  renderNumber();
+});
+
+// 数字エリアをタップしても切り替えられるように（使いやすさ向上）
+numberArea.addEventListener("click", () => {
+  if (currentNumber === null || currentNumber === undefined) return;
+  isHidden = !isHidden;
+  renderNumber();
+});
+
+// ------------------------------------------------------------
+// トースト
+// ------------------------------------------------------------
+let toastTimer = null;
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("toast--show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("toast--show");
+  }, 2600);
+}

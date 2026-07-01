@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F172A" />
+  <title>ito｜あなたの数字</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="screen">
+    <div class="card fade-in">
+      <!-- 上部: ルームと名前 -->
+      <div class="player-header">
+        <span class="room-badge room-badge--sm">ルーム <span id="roomLabel"></span></span>
+        <span id="playerName" class="player-name"></span>
+      </div>
+
+      <!-- お題 -->
+      <section class="topic-block">
+        <p class="section-caption">お題</p>
+        <p id="topic" class="topic-text">…</p>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- あなたの数字 -->
+      <section class="number-block">
+        <p class="section-caption">あなたの数字</p>
+
+        <!-- 数字表示エリア -->
+        <div id="numberArea" class="number-area">
+          <span id="numberValue" class="number-value">--</span>
+        </div>
+
+        <!-- 数字がまだ配られていないときの案内 -->
+        <p id="waitingMsg" class="waiting-msg">
+          運営が数字を配るまで、少しお待ちください…
+        </p>
+
+        <!-- 表示/非表示 切替ボタン（数字がある時だけ表示） -->
+        <button id="toggleButton" class="btn btn--primary btn--block" type="button" hidden>
+          数字を隠す
+        </button>
+        <p id="peekHint" class="hint" hidden>
+          周りに見られないように確認してね
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/player.js"></script>
+</body>
+</html>

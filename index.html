@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <!-- スマホ最適化: 幅を端末に合わせ、ユーザー拡大は許可 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F172A" />
+  <title>ito｜参加する</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="screen">
+    <div class="card card--center fade-in">
+      <!-- アプリタイトル -->
+      <h1 class="app-title">ito</h1>
+      <p class="app-subtitle">数字は他の人に見せずに、お題で協力しよう</p>
+
+      <!-- 参加している部屋の表示（QRのroom=から自動判定） -->
+      <div id="roomBadge" class="room-badge" hidden>
+        ルーム <span id="roomLabel"></span>
+      </div>
+
+      <!-- 入力フォーム（room が有効なときだけ表示） -->
+      <form id="joinForm" class="form" hidden>
+        <label class="field-label" for="nameInput">なまえ</label>
+        <input
+          id="nameInput"
+          class="text-input"
+          type="text"
+          inputmode="text"
+          autocomplete="name"
+          maxlength="20"
+          placeholder="例：たろう"
+          required
+        />
+        <button id="joinButton" class="btn btn--primary btn--block" type="submit">
+          参加する
+        </button>
+        <p class="hint">名前を入れて「参加する」を押すだけ！</p>
+      </form>
+
+      <!-- room が指定されていない/無効なときのエラー表示 -->
+      <div id="errorBox" class="error-box" hidden>
+        <p class="error-title">ルームが指定されていません</p>
+        <p class="error-desc">
+          運営から配られた QR コードを読み取って参加してください。
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- トースト（一時メッセージ） -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/index.js"></script>
+</body>
+</html>

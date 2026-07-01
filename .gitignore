@@ -1,0 +1,15 @@
+# Firebase の Web 設定（firebase-config.js）について:
+#   GitHub Pages で動かすにはブラウザに読み込ませる必要があるため、
+#   このリポジトリでは「公開する（コミットする）」方針です。
+#   Web 用の apiKey は秘密情報ではなく、データ保護は Firestore
+#   セキュリティルールで行います（README 参照）。
+#   → もし公開したくない場合は、次の行のコメントを外してください。
+# firebase-config.js
+
+# Firebase CLI の作業ファイル
+.firebase/
+firebase-debug.log
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
