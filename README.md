@@ -14,6 +14,9 @@
   - ルームD: `.../index.html?room=D`
   - ルームE: `.../index.html?room=E`
 - **Firebase プロジェクト**: `ito-event-9ifq4d`（Firestore 有効化・ルール適用済み・リージョン asia-northeast1）
+- **参加用QR（印刷して掲示）**: `qr/print.html` をブラウザで開いて印刷（Ctrl+P）
+  - オンライン版: https://leandroayrtonazuma-bot.github.io/ito-app/qr/print.html
+  - 画像単体: `qr/room-A.png` 〜 `qr/room-E.png`
 
 > 下記の「セットアップ手順」は、別環境でゼロから作り直す場合の参考です。
 > 既に上記プロジェクトで動作しているため、通常は読む必要はありません。
@@ -228,6 +231,29 @@ export const TOPICS = [
   // ここに自由に追加・変更
 ];
 ```
+
+---
+
+## イベント終了後のデータ削除
+
+参加者の名前・数字などが Firestore に残るため、イベント後の削除を推奨します。
+`tools/` に削除スクリプトを用意しています（`rooms` 配下を全削除。アプリ本体・
+GitHub Pages・Firebaseプロジェクトには影響せず、次回 `admin.html` を開けば部屋は
+自動で作り直されます）。
+
+```powershell
+# Windows（PowerShell）
+powershell -ExecutionPolicy Bypass -File tools/cleanup-after-event.ps1
+```
+
+```bash
+# Mac / Linux
+bash tools/cleanup-after-event.sh
+```
+
+実行には `firebase login` 済みの Firebase CLI が必要です。確認プロンプトで `yes` を
+入力すると削除されます。手動で消す場合は Firebase コンソール → Firestore Database →
+`rooms` コレクションを削除でも構いません。
 
 ---
 
