@@ -17,6 +17,7 @@ import {
 import {
   doc,
   onSnapshot,
+  deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ------------------------------------------------------------
@@ -30,7 +31,11 @@ const numberValue = document.getElementById("numberValue");
 const waitingMsg = document.getElementById("waitingMsg");
 const toggleButton = document.getElementById("toggleButton");
 const peekHint = document.getElementById("peekHint");
+const leaveButton = document.getElementById("leaveButton");
 const toast = document.getElementById("toast");
+
+// 退出処理中フラグ（onSnapshot の自動リダイレクトと二重発火させないため）
+let isLeaving = false;
 
 // ------------------------------------------------------------
 // 前提チェック（部屋 & 参加者ID）
@@ -86,6 +91,8 @@ onSnapshot(
   playerRef,
   (snap) => {
     if (!snap.exists()) {
+      // 退出ボタンによる削除中なら、こちらでは何もしない（退出処理側で遷移する）
+      if (isLeaving) return;
       // 自分のデータが消えた（部屋がリセットされた等）→ 参加画面へ
       localStorage.removeItem(playerStorageKey(roomId));
       window.location.replace(`index.html?room=${roomId}`);
@@ -164,6 +171,48 @@ numberArea.addEventListener("click", () => {
   if (currentNumber === null || currentNumber === undefined) return;
   isHidden = !isHidden;
   renderNumber();
+});
+
+// ------------------------------------------------------------
+// 退出（この端末を空にして、別の人として参加し直す）
+// ------------------------------------------------------------
+// 誤タップ防止のため2回タップ式（ネイティブの confirm ダイアログは使わない）。
+let leaveArmed = false;
+let leaveResetTimer = null;
+
+leaveButton.addEventListener("click", async () => {
+  // 1回目のタップ: 確認状態にして、3秒後に自動で元へ戻す
+  if (!leaveArmed) {
+    leaveArmed = true;
+    leaveButton.textContent = "もう一度タップで退出";
+    clearTimeout(leaveResetTimer);
+    leaveResetTimer = setTimeout(() => {
+      leaveArmed = false;
+      leaveButton.textContent = "退出する（別の人として参加）";
+    }, 3000);
+    return;
+  }
+
+  // 2回目のタップ: 実際に退出する
+  clearTimeout(leaveResetTimer);
+  isLeaving = true;
+  leaveButton.disabled = true;
+  leaveButton.textContent = "退出中…";
+
+  try {
+    // Firestore から自分の参加データを削除（人数・番号を残さない）
+    await deleteDoc(playerRef);
+  } catch (err) {
+    console.error("退出時の削除に失敗:", err);
+    // 削除に失敗しても、この端末の情報は消して先へ進む
+  }
+
+  // この端末の記憶を消す
+  localStorage.removeItem(playerStorageKey(roomId));
+  localStorage.removeItem(`ito_name_${roomId}`);
+
+  // 部屋選択から始めたいので room 指定なしで参加画面へ
+  window.location.replace("index.html");
 });
 
 // ------------------------------------------------------------
