@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ito 参加用QR（印刷・掲示用）</title>
+  <style>
+    :root { --ink: #0F172A; --accent: #2563EB; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      color: var(--ink);
+      background: #fff;
+    }
+    .lead {
+      text-align: center;
+      padding: 24px 16px 8px;
+    }
+    .lead h1 { margin: 0 0 4px; font-size: 22px; }
+    .lead p { margin: 0; color: #475569; font-size: 14px; }
+    .sheet {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      padding: 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .card {
+      border: 3px solid var(--ink);
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .room {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin: 0 0 12px;
+    }
+    .card img { width: 100%; max-width: 320px; height: auto; }
+    .steps {
+      margin: 12px 0 0;
+      font-size: 15px;
+      color: #334155;
+      line-height: 1.6;
+    }
+    .url {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #64748b;
+      word-break: break-all;
+    }
+    @media print {
+      .lead p { display: none; }
+      .card { border-color: #000; }
+      .sheet { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="lead">
+    <h1>ito 参加用QRコード</h1>
+    <p>各机・各部屋にこのカードを掲示してください。参加者はQRを読み取り→名前を入れて「参加する」だけ。</p>
+  </div>
+  <div class="sheet" id="sheet"></div>
+
+  <script>
+    const rooms = ["A", "B", "C", "D", "E"];
+    const base = "https://leandroayrtonazuma-bot.github.io/ito-app/index.html?room=";
+    const sheet = document.getElementById("sheet");
+    rooms.forEach((r) => {
+      const url = base + r;
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        '<p class="room">ルーム ' + r + '</p>' +
+        '<img src="room-' + r + '.png" alt="ルーム' + r + ' 参加用QR" />' +
+        '<p class="steps">QRを読み取る → 名前を入力 → 「参加する」</p>' +
+        '<p class="url">' + url + '</p>';
+      sheet.appendChild(card);
+    });
+  </script>
+</body>
+</html>
