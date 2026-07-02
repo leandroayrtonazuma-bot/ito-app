@@ -128,6 +128,67 @@ body {
   padding: 4px 12px;
 }
 
+/* ---- 部屋選択 ---- */
+.select-caption {
+  margin-top: 22px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.room-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* 1つの部屋ボタン（アルファベット + 現在人数） */
+.room-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 92px;
+  padding: 16px 10px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.08s ease, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.room-choice:hover {
+  border-color: var(--accent);
+  background: #0E1A2F;
+}
+.room-choice:active {
+  transform: scale(0.97);
+}
+
+.room-choice__letter {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, #fff, var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.room-choice__count {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.room-choice__count b {
+  color: var(--accent);
+  font-size: 15px;
+}
+
 /* ---- フォーム ---- */
 .form {
   margin-top: 24px;

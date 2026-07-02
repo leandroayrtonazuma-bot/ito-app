@@ -5,18 +5,16 @@
 
 ## ✅ デプロイ済み（このリポジトリはセットアップ完了状態です）
 
-- **公開URL（トップ）**: https://leandroayrtonazuma-bot.github.io/ito-app/
+- **参加用URL（QRはこれ1つだけ）**: https://leandroayrtonazuma-bot.github.io/ito-app/
+  - 参加者はここを開く → **部屋（A〜E）を選ぶ** → 名前を入れて「参加する」
+  - QR1枚を会場に掲示すればOK（机ごとに配る必要はありません）
 - **管理画面**: https://leandroayrtonazuma-bot.github.io/ito-app/admin.html
-- **参加用URL（QR化して各机に掲示）**
-  - ルームA: `https://leandroayrtonazuma-bot.github.io/ito-app/index.html?room=A`
-  - ルームB: `.../index.html?room=B`
-  - ルームC: `.../index.html?room=C`
-  - ルームD: `.../index.html?room=D`
-  - ルームE: `.../index.html?room=E`
 - **Firebase プロジェクト**: `ito-event-9ifq4d`（Firestore 有効化・ルール適用済み・リージョン asia-northeast1）
 - **参加用QR（印刷して掲示）**: `qr/print.html` をブラウザで開いて印刷（Ctrl+P）
   - オンライン版: https://leandroayrtonazuma-bot.github.io/ito-app/qr/print.html
-  - 画像単体: `qr/room-A.png` 〜 `qr/room-E.png`
+  - 画像単体: `qr/join.png`
+  - ※ `qr/room-A.png` 〜 `room-E.png` は「特定の部屋へ直接入る」旧QR（`?room=A` 直リンク）。
+    通常は不要ですが、部屋を固定したい机がある場合に使えます。
 
 > 下記の「セットアップ手順」は、別環境でゼロから作り直す場合の参考です。
 > 既に上記プロジェクトで動作しているため、通常は読む必要はありません。
@@ -35,7 +33,7 @@
 
 | ファイル | 役割 | URL 例 |
 | --- | --- | --- |
-| `index.html` | 参加画面（名前入力→参加） | `index.html?room=A` |
+| `index.html` | 参加画面（部屋を選ぶ→名前入力→参加） | `index.html` |
 | `player.html` | プレイヤー画面（お題・数字表示） | `player.html?room=A` |
 | `admin.html` | 管理画面（配布・進行） | `admin.html` |
 
@@ -158,7 +156,7 @@ npx serve
 
 ブラウザで以下を開きます。
 
-- 参加画面：`http://localhost:8000/index.html?room=A`
+- 参加画面：`http://localhost:8000/index.html`（開くと部屋選択が出ます）
 - 管理画面：`http://localhost:8000/admin.html`
 
 ---
@@ -188,27 +186,29 @@ npx serve
 
 公開後の各URL例：
 
-- 参加：`https://ユーザー名.github.io/ito-app/index.html?room=A`
+- 参加：`https://ユーザー名.github.io/ito-app/`（開くと部屋選択が出ます）
 - 管理：`https://ユーザー名.github.io/ito-app/admin.html`
 
 ---
 
 ## QRコード運用方法
 
-1. 管理画面（`admin.html`）を開く
-2. 各ルームカードの「**参加用リンクをコピー**」を押す
-   - `.../index.html?room=A` のような、ルーム付きURLがコピーされます
-3. コピーしたURLを **QRコード生成サービス**（例：無料のQR作成サイト）に貼り付けて画像化
-4. 部屋ごとに QR を印刷して掲示
-   - ルームA の机には room=A の QR、ルームB には room=B …という具合
+**QRは1枚だけ**でOKです（部屋ごとに配る必要はありません）。
 
-参加者は QR を読み取るだけで、その部屋の参加画面へ直接入れます。
+1. `qr/print.html` をブラウザで開いて印刷（Ctrl+P）し、会場に掲示する
+   - オンライン版: https://leandroayrtonazuma-bot.github.io/ito-app/qr/print.html
+   - 画像だけ使う場合は `qr/join.png`
+2. 参加者は QR を読み取る → **部屋（A〜E）を選ぶ**（各部屋の現在人数が表示されます）
+   → 名前を入れて「参加する」
+
+> 特定の机を特定の部屋に固定したい場合だけ、`?room=A` の直リンク（`qr/room-A.png` など）を
+> その机に貼れば、部屋選択を飛ばして直接その部屋に入れます。
 
 ---
 
 ## 当日の遊び方（運営フロー）
 
-1. 参加者：QR を読み取り、名前を入れて「参加する」
+1. 参加者：QR を読み取り、**部屋を選んで**名前を入れて「参加する」
 2. 全員そろったら、管理画面で対象ルームの「**数字配布**」を押す
    - 参加者全員に **1〜100 の重複なし** の数字がランダムで配られます
 3. 参加者は、自分の数字を見て（他人に見せずに）、お題に沿って小さい順に並べます

@@ -1,14 +1,19 @@
 // ============================================================
 // 参加画面（index.html）のロジック
 // ------------------------------------------------------------
-// やること:
-//   1. URL の ?room= から参加する部屋を判定する
-//   2. 名前を入力して「参加する」を押したら、その部屋に参加者を登録
-//   3. 登録した参加者IDを localStorage に保存し、プレイヤー画面へ移動
+// 流れ:
+//   1. 部屋を選ぶ（A〜E。各部屋の現在人数をリアルタイム表示）
+//   2. 名前を入力して「参加する」を押す → その部屋に参加者を登録
+//   3. 参加者IDを localStorage に保存し、プレイヤー画面へ移動
+//
+//   ※ QR/URL は1つ（index.html）に統一。開くと部屋選択が出ます。
+//     互換のため ?room=A のような直リンクもそのまま使えます
+//     （その場合は部屋選択を飛ばして名前入力から始まります）。
 // ============================================================
 
 import {
   db,
+  ROOM_IDS,
   TOPICS,
   STATUS,
   getRoomIdFromUrl,
@@ -21,50 +26,132 @@ import {
   setDoc,
   collection,
   addDoc,
+  onSnapshot,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ------------------------------------------------------------
 // DOM 取得
 // ------------------------------------------------------------
-const roomBadge = document.getElementById("roomBadge");
+const roomSelect = document.getElementById("roomSelect");
+const roomGrid = document.getElementById("roomGrid");
+const joinStep = document.getElementById("joinStep");
 const roomLabel = document.getElementById("roomLabel");
 const joinForm = document.getElementById("joinForm");
 const nameInput = document.getElementById("nameInput");
 const joinButton = document.getElementById("joinButton");
-const errorBox = document.getElementById("errorBox");
+const backButton = document.getElementById("backButton");
 const toast = document.getElementById("toast");
 
-// URL からルームIDを取得（例: ?room=A → "A"）
-const roomId = getRoomIdFromUrl();
+// 現在選択中の部屋（部屋選択 or URLの ?room= で決まる）
+let selectedRoom = null;
+// URLで部屋が直接指定されて来たか（その場合は「選び直す」を隠す）
+let cameFromUrl = false;
 
 // ------------------------------------------------------------
-// 画面の初期表示を切り替え
+// 初期表示の振り分け
 // ------------------------------------------------------------
-if (!roomId) {
-  // room が無い/無効 → エラー表示
-  errorBox.hidden = false;
-} else {
-  // room が有効 → フォーム表示
-  roomLabel.textContent = roomId;
-  roomBadge.hidden = false;
-  joinForm.hidden = false;
+init();
 
-  // すでにこの部屋で参加済みなら、そのままプレイヤー画面へ
-  const existingPlayerId = localStorage.getItem(playerStorageKey(roomId));
-  if (existingPlayerId) {
-    goToPlayerScreen();
+function init() {
+  const urlRoom = getRoomIdFromUrl();
+
+  if (urlRoom) {
+    // 直リンク（?room=A）で来た場合
+    // すでにこの部屋で参加済みなら、そのままプレイヤー画面へ
+    if (localStorage.getItem(playerStorageKey(urlRoom))) {
+      goToPlayerScreen(urlRoom);
+      return;
+    }
+    cameFromUrl = true;
+    openJoinStep(urlRoom);
+  } else {
+    // 通常（部屋未指定）: どこかの部屋に参加済みなら復帰させる
+    const joined = ROOM_IDS.find((r) => localStorage.getItem(playerStorageKey(r)));
+    if (joined) {
+      goToPlayerScreen(joined);
+      return;
+    }
+    openRoomSelect();
   }
+}
 
-  // 名前入力欄に自動でフォーカス（スマホでは環境により無効な場合あり）
+// ------------------------------------------------------------
+// ステップ1: 部屋選択
+// ------------------------------------------------------------
+function openRoomSelect() {
+  selectedRoom = null;
+  joinStep.hidden = true;
+  roomSelect.hidden = false;
+  buildRoomGrid();
+}
+
+// 部屋ボタンを生成し、それぞれの現在人数をリアルタイム表示する
+function buildRoomGrid() {
+  roomGrid.innerHTML = "";
+
+  ROOM_IDS.forEach((id) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "room-choice";
+    btn.innerHTML =
+      '<span class="room-choice__letter">' + id + "</span>" +
+      '<span class="room-choice__count" id="count-' + id + '">…</span>';
+    btn.addEventListener("click", () => openJoinStep(id));
+    roomGrid.appendChild(btn);
+
+    // 各部屋の参加人数をリアルタイム監視（players の件数）
+    const playersRef = collection(db, "rooms", id, "players");
+    onSnapshot(
+      playersRef,
+      (snap) => {
+        const el = document.getElementById("count-" + id);
+        if (el) el.innerHTML = "<b>" + snap.size + "</b> 人";
+      },
+      (err) => {
+        console.warn("人数の取得に失敗:", id, err);
+        const el = document.getElementById("count-" + id);
+        if (el) el.textContent = "–";
+      }
+    );
+  });
+}
+
+// ------------------------------------------------------------
+// ステップ2: 名前入力
+// ------------------------------------------------------------
+function openJoinStep(id) {
+  selectedRoom = id;
+  roomLabel.textContent = id;
+
+  roomSelect.hidden = true;
+  joinStep.hidden = false;
+
+  // URL直リンクで来たときは「選び直す」を出さない
+  backButton.hidden = cameFromUrl;
+
+  // 前回この部屋で使った名前があれば復元
+  const savedName = localStorage.getItem("ito_name_" + id);
+  if (savedName) nameInput.value = savedName;
+
   nameInput.focus();
 }
+
+// 「← 部屋を選び直す」
+backButton.addEventListener("click", () => {
+  openRoomSelect();
+});
 
 // ------------------------------------------------------------
 // 参加処理
 // ------------------------------------------------------------
 joinForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+
+  if (!selectedRoom) {
+    openRoomSelect();
+    return;
+  }
 
   const name = nameInput.value.trim();
   if (!name) {
@@ -78,10 +165,10 @@ joinForm.addEventListener("submit", async (event) => {
 
   try {
     // 1. 部屋ドキュメントがなければ作成（既にあれば中身は保持）
-    await ensureRoomExists(roomId);
+    await ensureRoomExists(selectedRoom);
 
     // 2. 参加者を players サブコレクションに追加
-    const playersRef = collection(db, "rooms", roomId, "players");
+    const playersRef = collection(db, "rooms", selectedRoom, "players");
     const newPlayer = await addDoc(playersRef, {
       name: name,
       number: null, // まだ数字は配られていない
@@ -89,11 +176,11 @@ joinForm.addEventListener("submit", async (event) => {
     });
 
     // 3. 参加者ID・名前を localStorage に保存（プレイヤー画面で使う）
-    localStorage.setItem(playerStorageKey(roomId), newPlayer.id);
-    localStorage.setItem(`ito_name_${roomId}`, name);
+    localStorage.setItem(playerStorageKey(selectedRoom), newPlayer.id);
+    localStorage.setItem("ito_name_" + selectedRoom, name);
 
     // 4. プレイヤー画面へ移動
-    goToPlayerScreen();
+    goToPlayerScreen(selectedRoom);
   } catch (err) {
     console.error("参加に失敗しました:", err);
     showToast("参加に失敗しました。通信環境を確認してください");
@@ -123,8 +210,8 @@ async function ensureRoomExists(id) {
 }
 
 // プレイヤー画面へ遷移
-function goToPlayerScreen() {
-  window.location.href = `player.html?room=${roomId}`;
+function goToPlayerScreen(room) {
+  window.location.href = "player.html?room=" + room;
 }
 
 // ボタンのローディング表示切り替え
