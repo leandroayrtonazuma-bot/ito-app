@@ -69,3 +69,9 @@ export function getRoomIdFromUrl() {
 export function playerStorageKey(roomId) {
   return `ito_player_${roomId}`;
 }
+
+// ルーム名の初期値（管理者が未設定のときに表示する名前）
+// 参加者にはこの名前だけが見えます（記号 A〜E は内部・URL 用）。
+export function defaultRoomName(roomId) {
+  return `ルーム ${roomId}`;
+}

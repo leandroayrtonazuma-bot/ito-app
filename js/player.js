@@ -12,6 +12,7 @@ import {
   db,
   getRoomIdFromUrl,
   playerStorageKey,
+  defaultRoomName,
 } from "./firebase.js";
 
 import {
@@ -52,8 +53,8 @@ if (!playerId) {
   window.location.replace(`index.html?room=${roomId}`);
 }
 
-// 画面上部の表示
-roomLabel.textContent = roomId;
+// 画面上部の表示（ルーム名は部屋ドキュメント購読で差し替える）
+roomLabel.textContent = defaultRoomName(roomId);
 playerName.textContent = localStorage.getItem(`ito_name_${roomId}`) || "";
 
 // ------------------------------------------------------------
@@ -75,7 +76,10 @@ onSnapshot(
       return;
     }
     const data = snap.data();
-    topicEl.textContent = data.currentTopic || "…";
+    // ルーム名（管理者が変更したら反映）
+    roomLabel.textContent = data.roomName || defaultRoomName(roomId);
+    // お題（空なら「お題なし」）
+    topicEl.textContent = data.currentTopic ? data.currentTopic : "お題なし";
   },
   (err) => {
     console.error("部屋の購読に失敗:", err);

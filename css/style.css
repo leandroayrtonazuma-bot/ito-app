@@ -179,6 +179,19 @@ body {
   color: transparent;
 }
 
+/* 部屋ボタンの名前（管理者が変更したルーム名） */
+.room-choice__name {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  word-break: break-word;
+  background: linear-gradient(135deg, #fff, var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .room-choice__count {
   font-size: 13px;
   color: var(--text-muted);
@@ -548,6 +561,152 @@ body {
   flex: 1;
   font-size: 16px;
   min-height: 52px;
+}
+
+.stat__topic--empty {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ---- 参加者一覧（管理画面） ---- */
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.players__caption {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+.players__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.players__empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 8px 2px;
+}
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.player-row__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.player-row__num {
+  min-width: 34px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.player-row__num--none {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+.player-row__del {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-height: 34px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.player-row__del:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.12);
+}
+.player-row__del--armed {
+  background: var(--danger);
+  color: #3b0a0a;
+  border-color: var(--danger);
+}
+.player-row__del:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ---- 設定（お題・ルーム名） ---- */
+.room-settings {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(11, 18, 32, 0.5);
+  padding: 4px 12px;
+}
+.room-settings > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 8px 0;
+  list-style: none;
+}
+.room-settings > summary::-webkit-details-marker {
+  display: none;
+}
+.room-settings > summary::before {
+  content: "⚙ ";
+}
+.room-settings[open] > summary {
+  color: var(--text);
+}
+.field {
+  padding: 6px 0 10px;
+}
+.field__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.field__row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.mini-input {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.mini-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.btn--mini {
+  min-height: 40px;
+  font-size: 14px;
+  padding: 0 14px;
+  flex-shrink: 0;
 }
 
 .admin-footer {

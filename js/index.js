@@ -18,6 +18,7 @@ import {
   STATUS,
   getRoomIdFromUrl,
   playerStorageKey,
+  defaultRoomName,
 } from "./firebase.js";
 
 import {
@@ -94,24 +95,34 @@ function buildRoomGrid() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "room-choice";
-    btn.innerHTML =
-      '<span class="room-choice__letter">' + id + "</span>" +
-      '<span class="room-choice__count" id="count-' + id + '">…</span>';
+    // 表示はルーム名（管理者が変更可能）。記号 A〜E は見せない。
+    const nameEl = document.createElement("span");
+    nameEl.className = "room-choice__name";
+    nameEl.textContent = defaultRoomName(id);
+    const countEl = document.createElement("span");
+    countEl.className = "room-choice__count";
+    countEl.innerHTML = "…";
+    btn.appendChild(nameEl);
+    btn.appendChild(countEl);
     btn.addEventListener("click", () => openJoinStep(id));
     roomGrid.appendChild(btn);
+
+    // ルーム名をリアルタイム監視（管理者が変更したら即反映）
+    onSnapshot(doc(db, "rooms", id), (snap) => {
+      const name = (snap.exists() && snap.data().roomName) || defaultRoomName(id);
+      nameEl.textContent = name;
+    });
 
     // 各部屋の参加人数をリアルタイム監視（players の件数）
     const playersRef = collection(db, "rooms", id, "players");
     onSnapshot(
       playersRef,
       (snap) => {
-        const el = document.getElementById("count-" + id);
-        if (el) el.innerHTML = "<b>" + snap.size + "</b> 人";
+        countEl.innerHTML = "<b>" + snap.size + "</b> 人";
       },
       (err) => {
         console.warn("人数の取得に失敗:", id, err);
-        const el = document.getElementById("count-" + id);
-        if (el) el.textContent = "–";
+        countEl.textContent = "–";
       }
     );
   });
@@ -122,7 +133,15 @@ function buildRoomGrid() {
 // ------------------------------------------------------------
 function openJoinStep(id) {
   selectedRoom = id;
-  roomLabel.textContent = id;
+  // まず初期名を表示し、実際のルーム名を取得して差し替える
+  roomLabel.textContent = defaultRoomName(id);
+  getDoc(doc(db, "rooms", id))
+    .then((snap) => {
+      if (selectedRoom !== id) return; // 途中で選び直された場合は無視
+      roomLabel.textContent =
+        (snap.exists() && snap.data().roomName) || defaultRoomName(id);
+    })
+    .catch(() => {});
 
   roomSelect.hidden = true;
   joinStep.hidden = false;
@@ -200,6 +219,7 @@ async function ensureRoomExists(id) {
   if (!snap.exists()) {
     await setDoc(roomRef, {
       roomId: id,
+      roomName: defaultRoomName(id), // ルーム名（管理者が変更可能）
       currentTopic: TOPICS[0], // 最初のお題
       topicIndex: 0, // お題リストの何番目か
       gameRound: 0, // ゲームの周回数（0 = まだ配布前）
