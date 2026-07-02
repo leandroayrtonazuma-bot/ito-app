@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ito 運営用QR（管理画面へ）</title>
+  <style>
+    :root { --ink: #0F172A; --warn: #DC2626; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      color: var(--ink);
+      background: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      border: 4px solid var(--warn);
+      border-radius: 28px;
+      padding: 40px 36px;
+      text-align: center;
+      max-width: 560px;
+      width: 100%;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--warn);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 1px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+    h1 { font-size: 34px; letter-spacing: 1px; margin-bottom: 6px; }
+    .sub { color: #475569; font-size: 15px; margin-bottom: 22px; }
+    .qr { width: 100%; max-width: 380px; height: auto; }
+    .warn {
+      margin-top: 22px;
+      color: var(--warn);
+      font-weight: 700;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .use {
+      margin-top: 16px;
+      font-size: 15px;
+      color: #334155;
+      line-height: 1.7;
+      text-align: left;
+      display: inline-block;
+    }
+    .url { margin-top: 16px; font-size: 13px; color: #64748b; word-break: break-all; }
+    a { color: #2563EB; }
+    @media print { .card { border-color: #000; } .tag { background: #000; } .warn { color: #000; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="tag">運営専用</span>
+    <h1>管理画面を開く</h1>
+    <p class="sub">数字の配布・ゲーム進行を操作する画面です</p>
+    <img class="qr" src="admin.png" alt="管理画面へのQR" />
+    <p class="warn">⚠ このQRは会場に掲示しないでください<br />運営の人だけが読み取ってください</p>
+    <p class="use">
+      使い方：<br />
+      ① このQRを運営のスマホ/PCで読み取る<br />
+      ② 各部屋の「数字配布」で数字を配る<br />
+      ③ 1ゲーム終わるごとに「次のゲーム」
+    </p>
+    <p class="url">
+      直接URL：<br />
+      <a href="https://leandroayrtonazuma-bot.github.io/ito-app/admin.html">https://leandroayrtonazuma-bot.github.io/ito-app/admin.html</a>
+    </p>
+  </div>
+</body>
+</html>

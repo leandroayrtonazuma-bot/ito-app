@@ -8,7 +8,9 @@
 - **参加用URL（QRはこれ1つだけ）**: https://leandroayrtonazuma-bot.github.io/ito-app/
   - 参加者はここを開く → **部屋（A〜E）を選ぶ** → 名前を入れて「参加する」
   - QR1枚を会場に掲示すればOK（机ごとに配る必要はありません）
-- **管理画面**: https://leandroayrtonazuma-bot.github.io/ito-app/admin.html
+- **管理画面（運営用）**: https://leandroayrtonazuma-bot.github.io/ito-app/admin.html
+  - 運営が手元で開く用の入口: `qr/admin-print.html`（QR＋直リンク。**会場には掲示しない**）
+  - 画像単体: `qr/admin.png`
 - **Firebase プロジェクト**: `ito-event-9ifq4d`（Firestore 有効化・ルール適用済み・リージョン asia-northeast1）
 - **参加用QR（印刷して掲示）**: `qr/print.html` をブラウザで開いて印刷（Ctrl+P）
   - オンライン版: https://leandroayrtonazuma-bot.github.io/ito-app/qr/print.html
