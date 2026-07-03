@@ -75,3 +75,27 @@ export function playerStorageKey(roomId) {
 export function defaultRoomName(roomId) {
   return `ルーム ${roomId}`;
 }
+
+// ------------------------------------------------------------
+// 数字を「小さい＝青／大きい＝赤」の色に変換する
+// ------------------------------------------------------------
+// 1〜100 を 0〜1 に正規化し、色相を 210°(青) → 0°(赤) へ動かします。
+// プレイヤー画面の大きい数字と、管理画面の参加者一覧で共通利用します。
+function numberHue(n) {
+  const t = (n - NUMBER_MIN) / (NUMBER_MAX - NUMBER_MIN);
+  const clamped = Math.max(0, Math.min(1, t));
+  return 210 * (1 - clamped); // 小さいほど 210(青)、大きいほど 0(赤)
+}
+
+// 単色（管理画面の一覧の数字など、普通の color 用）
+export function numberColor(n) {
+  if (n === null || n === undefined) return "";
+  return `hsl(${Math.round(numberHue(n))}, 80%, 62%)`;
+}
+
+// グラデーション（プレイヤー画面の大きい数字＝文字クリップ用の background-image）
+export function numberGradient(n) {
+  if (n === null || n === undefined) return "";
+  const h = Math.round(numberHue(n));
+  return `linear-gradient(135deg, hsl(${h}, 92%, 74%), hsl(${h}, 82%, 54%))`;
+}

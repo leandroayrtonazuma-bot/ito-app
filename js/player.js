@@ -13,6 +13,7 @@ import {
   getRoomIdFromUrl,
   playerStorageKey,
   defaultRoomName,
+  numberGradient,
 } from "./firebase.js";
 
 import {
@@ -124,6 +125,7 @@ function updateNumber(number) {
   if (!hasNumber) {
     // まだ数字が配られていない
     numberValue.textContent = "--";
+    numberValue.style.backgroundImage = ""; // 既定のグラデーションに戻す
     numberArea.classList.remove("number-area--hidden");
     waitingMsg.hidden = false;
     toggleButton.hidden = true;
@@ -153,10 +155,13 @@ function updateNumber(number) {
 function renderNumber() {
   if (isHidden) {
     numberValue.textContent = "???";
+    numberValue.style.backgroundImage = ""; // 隠す時は既定表示に戻す（CSS が muted 色にする）
     numberArea.classList.add("number-area--hidden");
     toggleButton.textContent = "数字を表示";
   } else {
     numberValue.textContent = String(currentNumber);
+    // 小さい＝青／大きい＝赤。CSS の文字クリップに合わせて background-image を差し替える。
+    numberValue.style.backgroundImage = numberGradient(currentNumber);
     numberArea.classList.remove("number-area--hidden");
     toggleButton.textContent = "数字を隠す";
   }

@@ -18,6 +18,7 @@ import {
   NUMBER_MIN,
   NUMBER_MAX,
   defaultRoomName,
+  numberColor,
 } from "./firebase.js";
 
 import {
@@ -35,6 +36,12 @@ import {
 
 const roomList = document.getElementById("roomList");
 const toast = document.getElementById("toast");
+const distributeAllBtn = document.getElementById("distributeAll");
+
+// 全ルーム一括配布（カード生成に依存しないので、ここで配線しておく）
+distributeAllBtn.addEventListener("click", (e) => {
+  handleDistributeAll(e.currentTarget);
+});
 
 // 状態の日本語ラベル
 const STATUS_LABEL = {
@@ -253,7 +260,10 @@ function renderPlayers(roomId, listEl, snap) {
     `;
     // 名前・数字はテキストとして安全に入れる（XSS 防止）
     row.querySelector(".player-row__name").textContent = d.name || "（無名）";
-    row.querySelector(".player-row__num").textContent = hasNumber ? String(d.number) : "—";
+    const numEl = row.querySelector(".player-row__num");
+    numEl.textContent = hasNumber ? String(d.number) : "—";
+    // 小さい＝青／大きい＝赤（数字がある時だけ）
+    numEl.style.color = hasNumber ? numberColor(d.number) : "";
 
     // 削除（誤操作防止のため2回クリック式）
     const delBtn = row.querySelector(".player-row__del");
@@ -336,62 +346,18 @@ async function setRoomName(roomId, name) {
 }
 
 // ------------------------------------------------------------
-// [数字配布] 参加者全員に重複なしの数字を配る
+// [数字配布] 参加者全員に重複なしの数字を配る（確認あり）
 // ------------------------------------------------------------
 async function handleDistribute(roomId, button) {
-  await distributeNumbers(roomId, button, { advanceTopic: false });
-}
-
-// ------------------------------------------------------------
-// [次のゲーム] 数字を消去 → 次のお題 → 新しい数字を配布
-// ------------------------------------------------------------
-async function handleNextGame(roomId, button) {
-  await distributeNumbers(roomId, button, { advanceTopic: true });
-}
-
-// 数字配布の共通処理
-async function distributeNumbers(roomId, button, options) {
+  const name = roomNameOf(button);
+  if (!window.confirm(`${name} に数字を配布しますか？\n配布済みの場合は配り直しになります。`)) {
+    return;
+  }
   setButtonLoading(button, true);
   try {
-    const playersRef = collection(db, "rooms", roomId, "players");
-    const playersSnap = await getDocs(playersRef);
-
-    if (playersSnap.empty) {
-      showToast(`このルームに参加者がいません`);
-      return;
-    }
-
-    const count = playersSnap.size;
-    const numbers = pickUniqueNumbers(count, NUMBER_MIN, NUMBER_MAX);
-
-    const batch = writeBatch(db);
-    playersSnap.docs.forEach((playerDoc, i) => {
-      batch.update(playerDoc.ref, { number: numbers[i] });
-    });
-
-    const roomRef = doc(db, "rooms", roomId);
-    const roomSnap = await getDoc(roomRef);
-    const roomData = roomSnap.data() || {};
-
-    const roomUpdate = {
-      status: STATUS.PLAYING,
-      gameRound: (roomData.gameRound || 0) + 1,
-    };
-
-    if (options.advanceTopic) {
-      // 次のお題へ（末尾まで行ったら先頭へ戻る）
-      const nextIndex = ((roomData.topicIndex || 0) + 1) % TOPICS.length;
-      roomUpdate.topicIndex = nextIndex;
-      roomUpdate.currentTopic = TOPICS[nextIndex];
-    }
-
-    batch.update(roomRef, roomUpdate);
-    await batch.commit();
-
+    const res = await distributeToRoom(roomId, { advanceTopic: false });
     showToast(
-      options.advanceTopic
-        ? `次のお題で数字を配りました`
-        : `${count}人に数字を配りました`
+      res.distributed ? `${res.count}人に数字を配りました` : "このルームに参加者がいません"
     );
   } catch (err) {
     console.error("数字配布に失敗:", err);
@@ -399,6 +365,109 @@ async function distributeNumbers(roomId, button, options) {
   } finally {
     setButtonLoading(button, false);
   }
+}
+
+// ------------------------------------------------------------
+// [次のゲーム] 数字を配り直し → 次のお題へ進める（確認あり）
+// ------------------------------------------------------------
+async function handleNextGame(roomId, button) {
+  const name = roomNameOf(button);
+  if (!window.confirm(`${name} を「次のゲーム」に進めますか？\nお題が次に進み、数字も配り直されます。`)) {
+    return;
+  }
+  setButtonLoading(button, true);
+  try {
+    const res = await distributeToRoom(roomId, { advanceTopic: true });
+    showToast(
+      res.distributed ? "次のお題で数字を配りました" : "このルームに参加者がいません"
+    );
+  } catch (err) {
+    console.error("次のゲームに失敗:", err);
+    showToast("配布に失敗しました。もう一度お試しください");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ------------------------------------------------------------
+// [全部屋いっぺんに配布] 参加者がいる全ルームにまとめて配る（確認あり）
+// お題は進めず、各部屋の「数字配布」と同じ動きにする。空の部屋はスキップ。
+// ------------------------------------------------------------
+async function handleDistributeAll(button) {
+  if (!window.confirm("参加者がいる全部屋に数字を配布しますか？\n配布済みの部屋は配り直しになります。")) {
+    return;
+  }
+  setButtonLoading(button, true);
+  try {
+    let rooms = 0;
+    let people = 0;
+    for (const roomId of ROOM_IDS) {
+      const res = await distributeToRoom(roomId, { advanceTopic: false });
+      if (res.distributed) {
+        rooms++;
+        people += res.count;
+      }
+    }
+    showToast(
+      rooms === 0
+        ? "参加者がいる部屋がありませんでした"
+        : `${rooms}部屋・計${people}人に数字を配りました`
+    );
+  } catch (err) {
+    console.error("一括配布に失敗:", err);
+    showToast("一括配布に失敗しました。もう一度お試しください");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ------------------------------------------------------------
+// 1ルームに数字を配る共通処理（確認・ボタン制御・トーストは呼び出し側）
+// 参加者がいなければ何もせず { distributed: false } を返す。
+// ------------------------------------------------------------
+async function distributeToRoom(roomId, options) {
+  const playersRef = collection(db, "rooms", roomId, "players");
+  const playersSnap = await getDocs(playersRef);
+  if (playersSnap.empty) {
+    return { distributed: false, count: 0 };
+  }
+
+  const count = playersSnap.size;
+  const numbers = pickUniqueNumbers(count, NUMBER_MIN, NUMBER_MAX);
+
+  const batch = writeBatch(db);
+  playersSnap.docs.forEach((playerDoc, i) => {
+    batch.update(playerDoc.ref, { number: numbers[i] });
+  });
+
+  const roomRef = doc(db, "rooms", roomId);
+  const roomSnap = await getDoc(roomRef);
+  const roomData = roomSnap.data() || {};
+
+  const roomUpdate = {
+    status: STATUS.PLAYING,
+    gameRound: (roomData.gameRound || 0) + 1,
+  };
+
+  if (options.advanceTopic) {
+    // 次のお題へ（末尾まで行ったら先頭へ戻る）
+    const nextIndex = ((roomData.topicIndex || 0) + 1) % TOPICS.length;
+    roomUpdate.topicIndex = nextIndex;
+    roomUpdate.currentTopic = TOPICS[nextIndex];
+  }
+
+  batch.update(roomRef, roomUpdate);
+  await batch.commit();
+
+  return { distributed: true, count };
+}
+
+// ボタンから所属カードのルーム表示名を取り出す（確認メッセージ用）
+function roomNameOf(button) {
+  const card = button.closest(".room-card");
+  const nameEl = card && card.querySelector('[data-role="roomName"]');
+  const name = nameEl && nameEl.textContent.trim();
+  return name || "この部屋";
 }
 
 // ------------------------------------------------------------

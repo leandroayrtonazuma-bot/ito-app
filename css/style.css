@@ -456,6 +456,17 @@ body {
   font-size: 14px;
 }
 
+/* 全ルーム一括操作バー */
+.admin-actions {
+  width: 100%;
+  max-width: 960px;
+  margin-bottom: 18px;
+  text-align: center;
+}
+.admin-actions .hint {
+  margin-top: 8px;
+}
+
 .room-list {
   width: 100%;
   max-width: 960px;
