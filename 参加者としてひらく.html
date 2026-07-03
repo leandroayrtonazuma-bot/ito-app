@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ito 参加者としてひらく</title>
+
+  <!-- このファイルはダブルクリック（file://）で開いてもOK。
+       本番の参加画面へ自動で移動するだけの「入口」です（PCからのデバッグ用）。
+       ローカルの index.html は ES Modules のため file:// では動かないので、
+       代わりにこのファイルから本番（GitHub Pages）の参加画面を開きます。
+
+       ?new=1 を付けているのは、PCが既に参加済みでも自動で数字画面に戻らせず、
+       毎回「別のプレイヤー」として部屋選択からやり直せるようにするためです
+       （実際の参加者が使うQR（qr/join.png）にはこのパラメータは付いておらず、
+       通常の自動復帰の動きのままです）。 -->
+
+  <!-- ↓ 本番の参加画面URL。将来URLが変わったら、ここ1か所を書き換えてください。 -->
+  <meta http-equiv="refresh"
+        content="0; url=https://leandroayrtonazuma-bot.github.io/ito-app/?new=1" />
+  <script>
+    // meta refresh が効かない環境でも確実に飛ぶよう、JS でも移動する
+    location.replace("https://leandroayrtonazuma-bot.github.io/ito-app/?new=1");
+  </script>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0F172A;
+      color: #E2E8F0;
+      font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    }
+    .wrap {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px;
+      text-align: center;
+    }
+    .msg { font-size: 18px; font-weight: 700; }
+    .sub { font-size: 14px; color: #94A3B8; }
+    .btn {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 14px 22px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #6366F1, #38BDF8);
+      color: #fff;
+      font-weight: 800;
+      font-size: 16px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="msg">参加画面へ移動しています…</p>
+    <a class="btn" href="https://leandroayrtonazuma-bot.github.io/ito-app/?new=1">
+      開かないときはここをタップ
+    </a>
+    <p class="sub">この画面は「本番の参加画面（部屋選択）」を開くための入口です</p>
+  </div>
+</body>
+</html>

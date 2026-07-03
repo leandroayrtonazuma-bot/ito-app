@@ -9,6 +9,10 @@
 //   ※ QR/URL は1つ（index.html）に統一。開くと部屋選択が出ます。
 //     互換のため ?room=A のような直リンクもそのまま使えます
 //     （その場合は部屋選択を飛ばして名前入力から始まります）。
+//
+//   ※ ?new=1 を付けると、この端末が既に参加済みでも自動復帰させず、
+//     必ず部屋選択から始めます（PCでのデバッグ用。「参加者としてひらく.html」が使用）。
+//     通常のQRアクセスにはこのパラメータは付かないため、参加者の自動復帰は従来通りです。
 // ============================================================
 
 import {
@@ -56,11 +60,13 @@ init();
 
 function init() {
   const urlRoom = getRoomIdFromUrl();
+  // ?new=1: 既に参加済みでも自動復帰させず、必ず部屋選択から始める（PCデバッグ用）
+  const forceNew = new URLSearchParams(window.location.search).get("new") === "1";
 
   if (urlRoom) {
     // 直リンク（?room=A）で来た場合
     // すでにこの部屋で参加済みなら、そのままプレイヤー画面へ
-    if (localStorage.getItem(playerStorageKey(urlRoom))) {
+    if (!forceNew && localStorage.getItem(playerStorageKey(urlRoom))) {
       goToPlayerScreen(urlRoom);
       return;
     }
@@ -68,10 +74,12 @@ function init() {
     openJoinStep(urlRoom);
   } else {
     // 通常（部屋未指定）: どこかの部屋に参加済みなら復帰させる
-    const joined = ROOM_IDS.find((r) => localStorage.getItem(playerStorageKey(r)));
-    if (joined) {
-      goToPlayerScreen(joined);
-      return;
+    if (!forceNew) {
+      const joined = ROOM_IDS.find((r) => localStorage.getItem(playerStorageKey(r)));
+      if (joined) {
+        goToPlayerScreen(joined);
+        return;
+      }
     }
     openRoomSelect();
   }
