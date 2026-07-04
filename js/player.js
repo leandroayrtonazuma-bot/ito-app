@@ -18,6 +18,7 @@ import {
 
 import {
   doc,
+  collection,
   onSnapshot,
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -34,6 +35,7 @@ const waitingMsg = document.getElementById("waitingMsg");
 const toggleButton = document.getElementById("toggleButton");
 const peekHint = document.getElementById("peekHint");
 const leaveButton = document.getElementById("leaveButton");
+const memberList = document.getElementById("memberList");
 const toast = document.getElementById("toast");
 
 // 退出処理中フラグ（onSnapshot の自動リダイレクトと二重発火させないため）
@@ -111,6 +113,36 @@ onSnapshot(
   (err) => {
     console.error("自分のデータの購読に失敗:", err);
     showToast("通信エラーが発生しました");
+  }
+);
+
+// ------------------------------------------------------------
+// 同じ部屋のメンバー一覧の購読（名前のみ。数字は取得・表示しない）
+// ------------------------------------------------------------
+const playersRef = collection(db, "rooms", roomId, "players");
+onSnapshot(
+  playersRef,
+  (snap) => {
+    memberList.innerHTML = "";
+    const others = snap.docs.filter((d) => d.id !== playerId);
+
+    if (others.length === 0) {
+      const li = document.createElement("li");
+      li.className = "member-list__empty";
+      li.textContent = "他の参加者はまだいません";
+      memberList.appendChild(li);
+      return;
+    }
+
+    others.forEach((d) => {
+      const li = document.createElement("li");
+      li.className = "member-list__item";
+      li.textContent = d.data().name || "（名前未設定）";
+      memberList.appendChild(li);
+    });
+  },
+  (err) => {
+    console.error("メンバー一覧の購読に失敗:", err);
   }
 );
 

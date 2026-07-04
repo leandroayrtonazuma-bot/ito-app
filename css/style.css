@@ -387,6 +387,33 @@ body {
   text-align: center;
 }
 
+.members-block {
+  text-align: left;
+}
+
+.member-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.member-list__item {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface-muted, rgba(148, 163, 184, 0.15));
+  color: var(--text);
+}
+
+.member-list__empty {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 /* 数字を大きく見せる表示エリア */
 .number-area {
   margin: 16px auto 4px;
