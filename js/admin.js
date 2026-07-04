@@ -37,10 +37,16 @@ import {
 const roomList = document.getElementById("roomList");
 const toast = document.getElementById("toast");
 const distributeAllBtn = document.getElementById("distributeAll");
+const setTopicAllBtn = document.getElementById("setTopicAll");
 
 // 全ルーム一括配布（カード生成に依存しないので、ここで配線しておく）
 distributeAllBtn.addEventListener("click", (e) => {
   handleDistributeAll(e.currentTarget);
+});
+
+// 全ルーム一括お題設定
+setTopicAllBtn.addEventListener("click", (e) => {
+  handleSetTopicAll(e.currentTarget);
 });
 
 // 状態の日本語ラベル
@@ -416,6 +422,29 @@ async function handleDistributeAll(button) {
   } catch (err) {
     console.error("一括配布に失敗:", err);
     showToast("一括配布に失敗しました。もう一度お試しください");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ------------------------------------------------------------
+// [全部屋のお題を一括で決める] お題を1つランダムに選び、全部屋に同じお題を設定する
+// （数字の配布はしない・確認なし）
+// ------------------------------------------------------------
+async function handleSetTopicAll(button) {
+  const idx = Math.floor(Math.random() * TOPICS.length);
+  const topic = TOPICS[idx];
+  setButtonLoading(button, true);
+  try {
+    const batch = writeBatch(db);
+    ROOM_IDS.forEach((roomId) => {
+      batch.update(doc(db, "rooms", roomId), { currentTopic: topic, topicIndex: idx });
+    });
+    await batch.commit();
+    showToast(`全部屋のお題を「${topic}」にしました`);
+  } catch (err) {
+    console.error("一括お題設定に失敗:", err);
+    showToast("お題の設定に失敗しました。もう一度お試しください");
   } finally {
     setButtonLoading(button, false);
   }
