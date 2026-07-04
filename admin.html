@@ -16,6 +16,16 @@
 
     <!-- 全ルーム一括操作 -->
     <div class="admin-actions fade-in">
+      <div class="field">
+        <label class="field__label">新しい部屋を追加</label>
+        <div class="field__row">
+          <input id="addRoomInput" class="mini-input" type="text"
+                 placeholder="部屋名を入力（例：文学部テーブル）" maxlength="24" />
+          <button id="addRoomBtn" class="btn btn--mini btn--primary" type="button">追加</button>
+        </div>
+      </div>
+      <p class="hint">新しい部屋を作成します。部屋ID（記号）は自動で割り当てられます</p>
+
       <button id="distributeAll" class="btn btn--primary btn--block" type="button">
         全部屋いっぺんに数字を配布
       </button>

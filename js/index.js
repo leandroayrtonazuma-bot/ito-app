@@ -17,7 +17,7 @@
 
 import {
   db,
-  ROOM_IDS,
+  DEFAULT_ROOM_IDS,
   TOPICS,
   STATUS,
   getRoomIdFromUrl,
@@ -57,12 +57,21 @@ let cameFromUrl = false;
 // 立っていれば、参加完了時にこの端末・ルームを「管理者プレイ中」として記録する
 const isAdminJoin = new URLSearchParams(window.location.search).get("admin") === "1";
 
+// 部屋一覧の管理元（meta/rooms ドキュメントの roomIds が正。管理画面で増減する）
+const metaRef = doc(db, "meta", "rooms");
+
+// 部屋一覧（meta/rooms）の購読解除・部屋ボタンの購読解除をまとめて持っておく
+// （部屋選択画面を離れる/作り直すたびに全部解除してから作り直す）
+// ※ init() から同期的に呼ばれ得るため、init() 呼び出しより前で宣言しておく
+let roomGridUnsubscribe = null;
+const roomButtons = new Map(); // roomId -> { btn, unsubscribeRoom, unsubscribePlayers }
+
 // ------------------------------------------------------------
 // 初期表示の振り分け
 // ------------------------------------------------------------
 init();
 
-function init() {
+async function init() {
   const urlRoom = getRoomIdFromUrl();
   // ?new=1: 既に参加済みでも自動復帰させず、必ず部屋選択から始める（PCデバッグ用）
   const forceNew = new URLSearchParams(window.location.search).get("new") === "1";
@@ -80,7 +89,8 @@ function init() {
   } else {
     // 通常（部屋未指定）: どこかの部屋に参加済みなら復帰させる
     if (!forceNew) {
-      const joined = ROOM_IDS.find((r) => localStorage.getItem(playerStorageKey(r)));
+      const ids = await fetchRoomIds();
+      const joined = ids.find((r) => localStorage.getItem(playerStorageKey(r)));
       if (joined) {
         goToPlayerScreen(joined);
         return;
@@ -88,6 +98,16 @@ function init() {
     }
     openRoomSelect();
   }
+}
+
+// meta/rooms から現在の部屋ID一覧を取得する（無ければ初期値で作成しておく）
+async function fetchRoomIds() {
+  const snap = await getDoc(metaRef);
+  if (snap.exists() && Array.isArray(snap.data().roomIds)) {
+    return snap.data().roomIds;
+  }
+  await setDoc(metaRef, { roomIds: DEFAULT_ROOM_IDS }, { merge: true });
+  return DEFAULT_ROOM_IDS;
 }
 
 // ------------------------------------------------------------
@@ -101,14 +121,39 @@ function openRoomSelect() {
 }
 
 // 部屋ボタンを生成し、それぞれの現在人数をリアルタイム表示する
+// 部屋の追加・削除（管理画面操作）にもリアルタイムで追従する
 function buildRoomGrid() {
+  teardownRoomGrid();
   roomGrid.innerHTML = "";
 
-  ROOM_IDS.forEach((id) => {
+  roomGridUnsubscribe = onSnapshot(metaRef, (snap) => {
+    const ids = (snap.exists() && snap.data().roomIds) || DEFAULT_ROOM_IDS;
+    syncRoomButtons(ids);
+  });
+}
+
+// 部屋選択画面を離れるときに、全ての購読を解除する
+function teardownRoomGrid() {
+  if (roomGridUnsubscribe) {
+    roomGridUnsubscribe();
+    roomGridUnsubscribe = null;
+  }
+  roomButtons.forEach((entry) => {
+    entry.unsubscribeRoom();
+    entry.unsubscribePlayers();
+  });
+  roomButtons.clear();
+}
+
+// 現在の部屋ID一覧（ids）に合わせて、ボタンを追加・削除する
+function syncRoomButtons(ids) {
+  ids.forEach((id) => {
+    if (roomButtons.has(id)) return;
+
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "room-choice";
-    // 表示はルーム名（管理者が変更可能）。記号 A〜E は見せない。
+    // 表示はルーム名（管理者が変更可能）。記号は見せない。
     const nameEl = document.createElement("span");
     nameEl.className = "room-choice__name";
     nameEl.textContent = defaultRoomName(id);
@@ -121,15 +166,14 @@ function buildRoomGrid() {
     roomGrid.appendChild(btn);
 
     // ルーム名をリアルタイム監視（管理者が変更したら即反映）
-    onSnapshot(doc(db, "rooms", id), (snap) => {
+    const unsubscribeRoom = onSnapshot(doc(db, "rooms", id), (snap) => {
       const name = (snap.exists() && snap.data().roomName) || defaultRoomName(id);
       nameEl.textContent = name;
     });
 
     // 各部屋の参加人数をリアルタイム監視（players の件数）
-    const playersRef = collection(db, "rooms", id, "players");
-    onSnapshot(
-      playersRef,
+    const unsubscribePlayers = onSnapshot(
+      collection(db, "rooms", id, "players"),
       (snap) => {
         countEl.innerHTML = "<b>" + snap.size + "</b> 人";
       },
@@ -138,6 +182,17 @@ function buildRoomGrid() {
         countEl.textContent = "–";
       }
     );
+
+    roomButtons.set(id, { btn, unsubscribeRoom, unsubscribePlayers });
+  });
+
+  // 一覧から消えた部屋（管理画面で削除された）→ ボタンを消す
+  roomButtons.forEach((entry, id) => {
+    if (ids.includes(id)) return;
+    entry.unsubscribeRoom();
+    entry.unsubscribePlayers();
+    entry.btn.remove();
+    roomButtons.delete(id);
   });
 }
 
@@ -145,6 +200,7 @@ function buildRoomGrid() {
 // ステップ2: 名前入力
 // ------------------------------------------------------------
 function openJoinStep(id) {
+  teardownRoomGrid(); // 部屋選択画面の購読は不要になるので止める
   selectedRoom = id;
   // まず初期名を表示し、実際のルーム名を取得して差し替える
   roomLabel.textContent = defaultRoomName(id);

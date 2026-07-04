@@ -298,6 +298,22 @@ body {
   color: var(--text);
 }
 
+.btn--danger {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 15px;
+  min-height: 48px;
+  font-weight: 600;
+}
+.btn--danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.12);
+}
+.btn--danger.is-armed {
+  background: var(--danger);
+  color: #3b0a0a;
+}
+
 /* 読み込み中のボタン */
 .btn.is-loading {
   opacity: 0.7;

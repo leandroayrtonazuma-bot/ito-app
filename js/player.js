@@ -11,6 +11,7 @@
 import {
   db,
   TOPICS,
+  STATUS,
   NUMBER_MIN,
   NUMBER_MAX,
   getRoomIdFromUrl,
@@ -26,6 +27,9 @@ import {
   onSnapshot,
   updateDoc,
   deleteDoc,
+  getDoc,
+  getDocs,
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ------------------------------------------------------------
@@ -278,13 +282,31 @@ leaveButton.addEventListener("click", async () => {
 // 管理者専用ツール（管理者が「参加者として参加」した端末のみ動作）
 // ------------------------------------------------------------
 if (isAdminMode) {
-  // 自分の数字だけをランダムに引き直す（他の人の数字との重複はチェックしない）
+  // この部屋の参加者全員に、重複なしの数字を配り直す（管理画面の「数字配布」と同じ動き）
   adminRerollBtn.addEventListener("click", async () => {
-    const newNumber = NUMBER_MIN + Math.floor(Math.random() * (NUMBER_MAX - NUMBER_MIN + 1));
+    if (!window.confirm("この部屋の全員の数字を引き直しますか？\n配布済みの数字は上書きされます。")) {
+      return;
+    }
     adminRerollBtn.disabled = true;
     try {
-      await updateDoc(playerRef, { number: newNumber });
-      showToast(`自分の数字を ${newNumber} に引き直しました`);
+      const playersSnap = await getDocs(collection(db, "rooms", roomId, "players"));
+      if (playersSnap.empty) {
+        showToast("この部屋に参加者がいません");
+        return;
+      }
+      const numbers = pickUniqueNumbers(playersSnap.size, NUMBER_MIN, NUMBER_MAX);
+      const batch = writeBatch(db);
+      playersSnap.docs.forEach((playerDoc, i) => {
+        batch.update(playerDoc.ref, { number: numbers[i] });
+      });
+      const roomSnap = await getDoc(roomRef);
+      const roomData = roomSnap.data() || {};
+      batch.update(roomRef, {
+        status: STATUS.PLAYING,
+        gameRound: (roomData.gameRound || 0) + 1,
+      });
+      await batch.commit();
+      showToast(`${playersSnap.size}人の数字を引き直しました`);
     } catch (err) {
       console.error("数字の引き直しに失敗:", err);
       showToast("数字の引き直しに失敗しました");
@@ -322,6 +344,20 @@ if (isAdminMode) {
       adminTopicRandomBtn.disabled = false;
     }
   });
+}
+
+// ------------------------------------------------------------
+// 1〜max の中から count 個、重複なしでランダムに選ぶ
+// ------------------------------------------------------------
+function pickUniqueNumbers(count, min, max) {
+  const pool = [];
+  for (let n = min; n <= max; n++) pool.push(n);
+  const take = Math.min(count, pool.length);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, take);
 }
 
 // ------------------------------------------------------------

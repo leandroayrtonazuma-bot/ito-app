@@ -12,13 +12,14 @@
 
 import {
   db,
-  ROOM_IDS,
+  DEFAULT_ROOM_IDS,
   TOPICS,
   STATUS,
   NUMBER_MIN,
   NUMBER_MAX,
   defaultRoomName,
   numberColor,
+  nextRoomId,
 } from "./firebase.js";
 
 import {
@@ -32,15 +33,31 @@ import {
   onSnapshot,
   writeBatch,
   serverTimestamp,
+  arrayUnion,
+  arrayRemove,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const roomList = document.getElementById("roomList");
 const toast = document.getElementById("toast");
+const addRoomBtn = document.getElementById("addRoomBtn");
+const addRoomInput = document.getElementById("addRoomInput");
 const distributeAllBtn = document.getElementById("distributeAll");
 const setTopicAllBtn = document.getElementById("setTopicAll");
 const setTopicAllManualBtn = document.getElementById("setTopicAllManual");
 const setTopicAllInput = document.getElementById("setTopicAllInput");
 const clearTopicAllBtn = document.getElementById("clearTopicAll");
+
+// 部屋一覧の管理元（meta/rooms ドキュメントの roomIds 配列が正）
+const metaRef = doc(db, "meta", "rooms");
+// 現在の部屋ID一覧（全部屋一括操作で使う）
+let currentRoomIds = [];
+// 部屋ID → { card, unsubscribeRoom, unsubscribePlayers }（追加・削除の管理用）
+const roomCards = new Map();
+
+// 部屋を追加
+addRoomBtn.addEventListener("click", () => {
+  handleAddRoom(addRoomBtn);
+});
 
 // 全ルーム一括配布（カード生成に依存しないので、ここで配線しておく）
 distributeAllBtn.addEventListener("click", (e) => {
@@ -69,28 +86,39 @@ const STATUS_LABEL = {
 };
 
 // ------------------------------------------------------------
-// 初期化: 各ルームのカードを作り、Firestore を購読する
+// 初期化: 部屋一覧（meta/rooms）を購読し、部屋の追加・削除に合わせて
+// カードを動的に増減させる
 // ------------------------------------------------------------
 init();
 
 async function init() {
-  for (const roomId of ROOM_IDS) {
+  await ensureRoomsMetaExists();
+  onSnapshot(metaRef, (snap) => {
+    const ids = (snap.exists() && snap.data().roomIds) || DEFAULT_ROOM_IDS;
+    currentRoomIds = ids;
+    syncRoomCards(ids);
+  });
+}
+
+// meta/rooms ドキュメントが無ければ、初期の部屋一覧（A〜E）で作成する
+async function ensureRoomsMetaExists() {
+  const snap = await getDoc(metaRef);
+  if (!snap.exists()) {
+    await setDoc(metaRef, { roomIds: DEFAULT_ROOM_IDS });
+  }
+  for (const roomId of DEFAULT_ROOM_IDS) {
     await ensureRoomExists(roomId);
-    const card = buildRoomCard(roomId);
-    roomList.appendChild(card);
-    subscribeRoom(roomId, card);
-    subscribePlayers(roomId, card);
   }
 }
 
 // 部屋ドキュメントが無ければ作成
-async function ensureRoomExists(roomId) {
+async function ensureRoomExists(roomId, roomName) {
   const roomRef = doc(db, "rooms", roomId);
   const snap = await getDoc(roomRef);
   if (!snap.exists()) {
     await setDoc(roomRef, {
       roomId,
-      roomName: defaultRoomName(roomId),
+      roomName: roomName || defaultRoomName(roomId),
       currentTopic: TOPICS[0],
       topicIndex: 0,
       gameRound: 0,
@@ -98,6 +126,31 @@ async function ensureRoomExists(roomId) {
       createdAt: serverTimestamp(),
     });
   }
+}
+
+// 現在の部屋ID一覧（ids）に合わせて、カードを追加・削除する
+function syncRoomCards(ids) {
+  // 追加された部屋 → カードを作る
+  ids.forEach((roomId) => {
+    if (roomCards.has(roomId)) return;
+    ensureRoomExists(roomId).then(() => {
+      if (roomCards.has(roomId)) return; // 二重生成防止
+      const card = buildRoomCard(roomId);
+      roomList.appendChild(card);
+      const unsubscribeRoom = subscribeRoom(roomId, card);
+      const unsubscribePlayers = subscribePlayers(roomId, card);
+      roomCards.set(roomId, { card, unsubscribeRoom, unsubscribePlayers });
+    });
+  });
+
+  // 一覧から消えた部屋 → 購読解除してカードを消す
+  roomCards.forEach((entry, roomId) => {
+    if (ids.includes(roomId)) return;
+    entry.unsubscribeRoom();
+    entry.unsubscribePlayers();
+    entry.card.remove();
+    roomCards.delete(roomId);
+  });
 }
 
 // ------------------------------------------------------------
@@ -174,6 +227,10 @@ function buildRoomCard(roomId) {
     <button class="btn btn--ghost btn--block" data-role="joinAsPlayer" type="button">
       参加者として参加
     </button>
+
+    <button class="btn btn--danger btn--block" data-role="deleteRoom" type="button">
+      この部屋を削除
+    </button>
   `;
 
   // 進行ボタン
@@ -188,6 +245,36 @@ function buildRoomCard(roomId) {
   });
   card.querySelector('[data-role="joinAsPlayer"]').addEventListener("click", () => {
     joinAsPlayer(roomId);
+  });
+
+  // 部屋の削除（誤操作防止のため2回クリック式）
+  const deleteRoomBtn = card.querySelector('[data-role="deleteRoom"]');
+  let deleteArmed = false;
+  let deleteArmTimer = null;
+  deleteRoomBtn.addEventListener("click", async () => {
+    if (!deleteArmed) {
+      deleteArmed = true;
+      deleteRoomBtn.textContent = "本当に削除？（参加者ごと消えます）";
+      deleteRoomBtn.classList.add("is-armed");
+      clearTimeout(deleteArmTimer);
+      deleteArmTimer = setTimeout(() => {
+        deleteArmed = false;
+        deleteRoomBtn.textContent = "この部屋を削除";
+        deleteRoomBtn.classList.remove("is-armed");
+      }, 3000);
+      return;
+    }
+    clearTimeout(deleteArmTimer);
+    deleteRoomBtn.disabled = true;
+    deleteRoomBtn.textContent = "削除中…";
+    const ok = await handleDeleteRoom(roomId);
+    if (!ok) {
+      // 失敗時はボタンを元に戻す（成功時はカードごと消えるので不要）
+      deleteArmed = false;
+      deleteRoomBtn.disabled = false;
+      deleteRoomBtn.textContent = "この部屋を削除";
+      deleteRoomBtn.classList.remove("is-armed");
+    }
   });
 
   // お題設定
@@ -222,7 +309,7 @@ function subscribeRoom(roomId, card) {
   const topicInput = card.querySelector('[data-role="topicInput"]');
   const nameInput = card.querySelector('[data-role="nameInput"]');
 
-  onSnapshot(doc(db, "rooms", roomId), (snap) => {
+  return onSnapshot(doc(db, "rooms", roomId), (snap) => {
     if (!snap.exists()) return;
     const data = snap.data();
 
@@ -252,7 +339,7 @@ function subscribePlayers(roomId, card) {
   const countEl = card.querySelector('[data-role="count"]');
   const listEl = card.querySelector('[data-role="players"]');
 
-  onSnapshot(collection(db, "rooms", roomId, "players"), (snap) => {
+  return onSnapshot(collection(db, "rooms", roomId, "players"), (snap) => {
     countEl.textContent = String(snap.size);
     renderPlayers(roomId, listEl, snap);
   });
@@ -427,7 +514,7 @@ async function handleDistributeAll(button) {
   try {
     let rooms = 0;
     let people = 0;
-    for (const roomId of ROOM_IDS) {
+    for (const roomId of currentRoomIds) {
       const res = await distributeToRoom(roomId, { advanceTopic: false });
       if (res.distributed) {
         rooms++;
@@ -457,7 +544,7 @@ async function handleSetTopicAll(button) {
   setButtonLoading(button, true);
   try {
     const batch = writeBatch(db);
-    ROOM_IDS.forEach((roomId) => {
+    currentRoomIds.forEach((roomId) => {
       batch.update(doc(db, "rooms", roomId), { currentTopic: topic, topicIndex: idx });
     });
     await batch.commit();
@@ -483,7 +570,7 @@ async function handleSetTopicAllManual(button) {
   setButtonLoading(button, true);
   try {
     const batch = writeBatch(db);
-    ROOM_IDS.forEach((roomId) => {
+    currentRoomIds.forEach((roomId) => {
       batch.update(doc(db, "rooms", roomId), { currentTopic: topic });
     });
     await batch.commit();
@@ -504,7 +591,7 @@ async function handleClearTopicAll(button) {
   setButtonLoading(button, true);
   try {
     const batch = writeBatch(db);
-    ROOM_IDS.forEach((roomId) => {
+    currentRoomIds.forEach((roomId) => {
       batch.update(doc(db, "rooms", roomId), { currentTopic: "" });
     });
     await batch.commit();
@@ -603,6 +690,54 @@ function joinAsPlayer(roomId) {
   const base = window.location.href.replace(/admin\.html.*$/, "index.html");
   const url = `${base}?room=${roomId}&admin=1`;
   window.open(url, "_blank");
+}
+
+// ------------------------------------------------------------
+// [部屋を追加] 部屋名を入力して新しい部屋を作る（IDは自動採番・確認なし）
+// ------------------------------------------------------------
+async function handleAddRoom(button) {
+  const name = addRoomInput.value.trim();
+  if (!name) {
+    showToast("部屋名を入力してください");
+    return;
+  }
+  setButtonLoading(button, true);
+  try {
+    const newId = nextRoomId(currentRoomIds);
+    await ensureRoomExists(newId, name);
+    await updateDoc(metaRef, { roomIds: arrayUnion(newId) });
+    addRoomInput.value = "";
+    showToast(`「${name}」を追加しました`);
+  } catch (err) {
+    console.error("部屋の追加に失敗:", err);
+    showToast("部屋の追加に失敗しました。もう一度お試しください");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ------------------------------------------------------------
+// [部屋を削除] 部屋ドキュメント・参加者を全て消し、一覧からも外す
+// （呼び出し側のカードで2回タップ確認済み）
+// ------------------------------------------------------------
+async function handleDeleteRoom(roomId) {
+  try {
+    // 参加者（サブコレクション）を先に全削除
+    const playersSnap = await getDocs(collection(db, "rooms", roomId, "players"));
+    if (!playersSnap.empty) {
+      const batch = writeBatch(db);
+      playersSnap.docs.forEach((playerDoc) => batch.delete(playerDoc.ref));
+      await batch.commit();
+    }
+    await deleteDoc(doc(db, "rooms", roomId));
+    await updateDoc(metaRef, { roomIds: arrayRemove(roomId) });
+    showToast("部屋を削除しました");
+    return true;
+  } catch (err) {
+    console.error("部屋の削除に失敗:", err);
+    showToast("部屋の削除に失敗しました。もう一度お試しください");
+    return false;
+  }
 }
 
 // ------------------------------------------------------------

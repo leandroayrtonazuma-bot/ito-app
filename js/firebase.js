@@ -24,9 +24,9 @@ export const db = getFirestore(app);
 // アプリ全体で使う定数
 // ------------------------------------------------------------
 
-// 利用するルーム（部屋）の一覧。QRコードの ?room=A などに対応します。
-// 部屋を増減したい場合はこの配列を編集してください。
-export const ROOM_IDS = ["A", "B", "C", "D", "E"];
+// 部屋の初期一覧（初回アクセス時、Firestore の meta/rooms が無ければこれで作成する）。
+// 以降の部屋の追加・削除は管理画面から行う（meta/rooms ドキュメントの roomIds が正）。
+export const DEFAULT_ROOM_IDS = ["A", "B", "C", "D", "E"];
 
 // お題リスト。「次のゲーム」を押すたびに、この順で次のお題へ進みます。
 // 自由に追加・編集して構いません。
@@ -58,11 +58,23 @@ export const STATUS = {
 // ------------------------------------------------------------
 
 // URL のクエリから ?room= の値を取得する（例: ?room=A → "A"）
-// 見つからない場合や一覧に無い値の場合は null を返す
+// 部屋は動的に追加・削除されるため、ここでは形式だけをチェックする
+// （実在するかどうかは、各画面が Firestore を読んだ時点で判断する）
+const ROOM_ID_PATTERN = /^[A-Z0-9]{1,10}$/;
 export function getRoomIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const room = (params.get("room") || "").toUpperCase().trim();
-  return ROOM_IDS.includes(room) ? room : null;
+  return ROOM_ID_PATTERN.test(room) ? room : null;
+}
+
+// まだ使われていない部屋IDを1つ決める（A〜Zの空いている文字 → 尽きたら時刻ベースのコード）
+export function nextRoomId(existingIds) {
+  const used = new Set(existingIds);
+  for (let code = 65; code <= 90; code++) {
+    const id = String.fromCharCode(code);
+    if (!used.has(id)) return id;
+  }
+  return "R" + Date.now().toString(36).toUpperCase();
 }
 
 // localStorage に保存するときのキー（ルームごとに参加者IDを保持）

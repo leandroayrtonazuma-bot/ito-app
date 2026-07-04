@@ -22,6 +22,11 @@ service cloud.firestore {
       }
     }
 
+    // 部屋一覧（meta/rooms）: 管理画面・参加画面が部屋の追加・削除を反映するために使う
+    match /meta/{docId} {
+      allow read, write: if true;
+    }
+
     // 上記以外は全て禁止
     match /{document=**} {
       allow read, write: if false;
