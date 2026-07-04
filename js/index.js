@@ -22,6 +22,7 @@ import {
   STATUS,
   getRoomIdFromUrl,
   playerStorageKey,
+  adminFlagKey,
   defaultRoomName,
 } from "./firebase.js";
 
@@ -52,6 +53,9 @@ const toast = document.getElementById("toast");
 let selectedRoom = null;
 // URLで部屋が直接指定されて来たか（その場合は「選び直す」を隠す）
 let cameFromUrl = false;
+// 管理者画面の「参加者として参加」から来たか（?admin=1）
+// 立っていれば、参加完了時にこの端末・ルームを「管理者プレイ中」として記録する
+const isAdminJoin = new URLSearchParams(window.location.search).get("admin") === "1";
 
 // ------------------------------------------------------------
 // 初期表示の振り分け
@@ -67,6 +71,7 @@ function init() {
     // 直リンク（?room=A）で来た場合
     // すでにこの部屋で参加済みなら、そのままプレイヤー画面へ
     if (!forceNew && localStorage.getItem(playerStorageKey(urlRoom))) {
+      if (isAdminJoin) localStorage.setItem(adminFlagKey(urlRoom), "1");
       goToPlayerScreen(urlRoom);
       return;
     }
@@ -205,6 +210,8 @@ joinForm.addEventListener("submit", async (event) => {
     // 3. 参加者ID・名前を localStorage に保存（プレイヤー画面で使う）
     localStorage.setItem(playerStorageKey(selectedRoom), newPlayer.id);
     localStorage.setItem("ito_name_" + selectedRoom, name);
+    // 管理者の「参加者として参加」から来た場合、この端末・ルームを記録しておく
+    if (isAdminJoin) localStorage.setItem(adminFlagKey(selectedRoom), "1");
 
     // 4. プレイヤー画面へ移動
     goToPlayerScreen(selectedRoom);

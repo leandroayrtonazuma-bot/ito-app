@@ -38,6 +38,8 @@ const roomList = document.getElementById("roomList");
 const toast = document.getElementById("toast");
 const distributeAllBtn = document.getElementById("distributeAll");
 const setTopicAllBtn = document.getElementById("setTopicAll");
+const setTopicAllManualBtn = document.getElementById("setTopicAllManual");
+const setTopicAllInput = document.getElementById("setTopicAllInput");
 const clearTopicAllBtn = document.getElementById("clearTopicAll");
 
 // 全ルーム一括配布（カード生成に依存しないので、ここで配線しておく）
@@ -45,9 +47,14 @@ distributeAllBtn.addEventListener("click", (e) => {
   handleDistributeAll(e.currentTarget);
 });
 
-// 全ルーム一括お題設定
+// 全ルーム一括お題設定（おまかせ）
 setTopicAllBtn.addEventListener("click", (e) => {
   handleSetTopicAll(e.currentTarget);
+});
+
+// 全ルーム一括お題設定（自由入力）
+setTopicAllManualBtn.addEventListener("click", (e) => {
+  handleSetTopicAllManual(e.currentTarget);
 });
 
 // 全ルーム一括お題クリア（お題なし）
@@ -163,6 +170,10 @@ function buildRoomCard(roomId) {
     <button class="btn btn--ghost btn--block" data-role="copy" type="button">
       参加用リンクをコピー
     </button>
+
+    <button class="btn btn--ghost btn--block" data-role="joinAsPlayer" type="button">
+      参加者として参加
+    </button>
   `;
 
   // 進行ボタン
@@ -174,6 +185,9 @@ function buildRoomCard(roomId) {
   });
   card.querySelector('[data-role="copy"]').addEventListener("click", () => {
     copyJoinLink(roomId);
+  });
+  card.querySelector('[data-role="joinAsPlayer"]').addEventListener("click", () => {
+    joinAsPlayer(roomId);
   });
 
   // お題設定
@@ -457,6 +471,32 @@ async function handleSetTopicAll(button) {
 }
 
 // ------------------------------------------------------------
+// [全部屋のお題を一括入力] 入力した自由文を全部屋に同じお題として設定する
+// （topicIndexは変えないので、次の「次のゲーム」はプリセットの続きに進む・確認なし）
+// ------------------------------------------------------------
+async function handleSetTopicAllManual(button) {
+  const topic = setTopicAllInput.value.trim();
+  if (!topic) {
+    showToast("お題を入力してください");
+    return;
+  }
+  setButtonLoading(button, true);
+  try {
+    const batch = writeBatch(db);
+    ROOM_IDS.forEach((roomId) => {
+      batch.update(doc(db, "rooms", roomId), { currentTopic: topic });
+    });
+    await batch.commit();
+    showToast(`全部屋のお題を「${topic}」にしました`);
+  } catch (err) {
+    console.error("一括お題設定（自由入力）に失敗:", err);
+    showToast("お題の設定に失敗しました。もう一度お試しください");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ------------------------------------------------------------
 // [全部屋のお題をなしにする] 全部屋のお題を一括で「お題なし」にする
 // （topicIndexは変えないので、次の「次のゲーム」はプリセットの続きに進む・確認なし）
 // ------------------------------------------------------------
@@ -552,6 +592,17 @@ async function copyJoinLink(roomId) {
   } catch {
     window.prompt("このURLをコピーしてください", url);
   }
+}
+
+// ------------------------------------------------------------
+// [参加者として参加] 管理者が別タブで参加者として入室する。
+// index.html の参加フローに admin=1 を渡し、参加後に player.html 側で
+// 管理者専用ボタン（数字の引き直し・お題変更）を出せるようにする。
+// ------------------------------------------------------------
+function joinAsPlayer(roomId) {
+  const base = window.location.href.replace(/admin\.html.*$/, "index.html");
+  const url = `${base}?room=${roomId}&admin=1`;
+  window.open(url, "_blank");
 }
 
 // ------------------------------------------------------------

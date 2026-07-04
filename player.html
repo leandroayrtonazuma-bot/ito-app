@@ -59,6 +59,29 @@
 
       <div class="divider"></div>
 
+      <!-- 管理者専用ツール（管理者が「参加者として参加」した端末だけに表示） -->
+      <section id="adminControls" class="admin-controls" hidden>
+        <p class="section-caption">管理者ツール</p>
+
+        <button id="adminRerollBtn" class="btn btn--accent btn--block" type="button">
+          自分の数字を引き直す
+        </button>
+
+        <div class="field">
+          <label class="field__label">お題を変更</label>
+          <div class="field__row">
+            <input id="adminTopicInput" class="mini-input" type="text"
+                   placeholder="お題を入力（空欄も可）" maxlength="40" />
+            <button id="adminTopicSetBtn" class="btn btn--mini btn--primary" type="button">設定</button>
+          </div>
+          <button id="adminTopicRandomBtn" class="btn btn--mini btn--ghost btn--block" type="button">
+            おまかせ（ランダム）
+          </button>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
       <!-- 退出（この端末を空にして、別の人として参加し直す） -->
       <button id="leaveButton" class="btn btn--ghost btn--block" type="button">
         退出する（別の人として参加）

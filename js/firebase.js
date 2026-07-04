@@ -70,6 +70,12 @@ export function playerStorageKey(roomId) {
   return `ito_player_${roomId}`;
 }
 
+// 管理者が「参加者として参加」した端末・ルームの組み合わせを覚えておくキー。
+// 立っていると、参加者画面（player.html）で管理者専用ボタンを表示する。
+export function adminFlagKey(roomId) {
+  return `ito_admin_${roomId}`;
+}
+
 // ルーム名の初期値（管理者が未設定のときに表示する名前）
 // 参加者にはこの名前だけが見えます（記号 A〜E は内部・URL 用）。
 export function defaultRoomName(roomId) {

@@ -10,8 +10,12 @@
 
 import {
   db,
+  TOPICS,
+  NUMBER_MIN,
+  NUMBER_MAX,
   getRoomIdFromUrl,
   playerStorageKey,
+  adminFlagKey,
   defaultRoomName,
   numberGradient,
 } from "./firebase.js";
@@ -20,6 +24,7 @@ import {
   doc,
   collection,
   onSnapshot,
+  updateDoc,
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -36,6 +41,11 @@ const toggleButton = document.getElementById("toggleButton");
 const peekHint = document.getElementById("peekHint");
 const leaveButton = document.getElementById("leaveButton");
 const memberList = document.getElementById("memberList");
+const adminControls = document.getElementById("adminControls");
+const adminRerollBtn = document.getElementById("adminRerollBtn");
+const adminTopicInput = document.getElementById("adminTopicInput");
+const adminTopicSetBtn = document.getElementById("adminTopicSetBtn");
+const adminTopicRandomBtn = document.getElementById("adminTopicRandomBtn");
 const toast = document.getElementById("toast");
 
 // 退出処理中フラグ（onSnapshot の自動リダイレクトと二重発火させないため）
@@ -60,6 +70,10 @@ if (!playerId) {
 roomLabel.textContent = defaultRoomName(roomId);
 playerName.textContent = localStorage.getItem(`ito_name_${roomId}`) || "";
 
+// 管理者が「参加者として参加」した端末・ルームなら、管理者専用ツールを表示する
+const isAdminMode = localStorage.getItem(adminFlagKey(roomId)) === "1";
+if (isAdminMode) adminControls.hidden = false;
+
 // ------------------------------------------------------------
 // 表示状態（この端末内だけで持つ）
 // ------------------------------------------------------------
@@ -83,6 +97,10 @@ onSnapshot(
     roomLabel.textContent = data.roomName || defaultRoomName(roomId);
     // お題（空なら「お題なし」）
     topicEl.textContent = data.currentTopic ? data.currentTopic : "お題なし";
+    // 管理者ツールのお題入力欄も同期（入力中は上書きしない）
+    if (isAdminMode && document.activeElement !== adminTopicInput) {
+      adminTopicInput.value = data.currentTopic || "";
+    }
   },
   (err) => {
     console.error("部屋の購読に失敗:", err);
@@ -255,6 +273,56 @@ leaveButton.addEventListener("click", async () => {
   // 部屋選択から始めたいので room 指定なしで参加画面へ
   window.location.replace("index.html");
 });
+
+// ------------------------------------------------------------
+// 管理者専用ツール（管理者が「参加者として参加」した端末のみ動作）
+// ------------------------------------------------------------
+if (isAdminMode) {
+  // 自分の数字だけをランダムに引き直す（他の人の数字との重複はチェックしない）
+  adminRerollBtn.addEventListener("click", async () => {
+    const newNumber = NUMBER_MIN + Math.floor(Math.random() * (NUMBER_MAX - NUMBER_MIN + 1));
+    adminRerollBtn.disabled = true;
+    try {
+      await updateDoc(playerRef, { number: newNumber });
+      showToast(`自分の数字を ${newNumber} に引き直しました`);
+    } catch (err) {
+      console.error("数字の引き直しに失敗:", err);
+      showToast("数字の引き直しに失敗しました");
+    } finally {
+      adminRerollBtn.disabled = false;
+    }
+  });
+
+  // お題を自由入力で設定（topicIndex は変えない）
+  adminTopicSetBtn.addEventListener("click", async () => {
+    const topic = adminTopicInput.value.trim();
+    adminTopicSetBtn.disabled = true;
+    try {
+      await updateDoc(roomRef, { currentTopic: topic });
+      showToast(topic ? `お題を「${topic}」にしました` : "お題を「なし」にしました");
+    } catch (err) {
+      console.error("お題の設定に失敗:", err);
+      showToast("お題の設定に失敗しました");
+    } finally {
+      adminTopicSetBtn.disabled = false;
+    }
+  });
+
+  // お題をプリセットからランダムに1つ選んで設定（以降の順送りもそこから続く）
+  adminTopicRandomBtn.addEventListener("click", async () => {
+    const idx = Math.floor(Math.random() * TOPICS.length);
+    adminTopicRandomBtn.disabled = true;
+    try {
+      await updateDoc(roomRef, { currentTopic: TOPICS[idx], topicIndex: idx });
+      showToast(`お題を「${TOPICS[idx]}」にしました`);
+    } catch (err) {
+      console.error("お題の設定に失敗:", err);
+      showToast("お題の設定に失敗しました");
+    } finally {
+      adminTopicRandomBtn.disabled = false;
+    }
+  });
+}
 
 // ------------------------------------------------------------
 // トースト

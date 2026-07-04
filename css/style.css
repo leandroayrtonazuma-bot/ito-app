@@ -391,6 +391,14 @@ body {
   text-align: left;
 }
 
+.admin-controls {
+  text-align: left;
+}
+
+.admin-controls .field {
+  margin-top: 14px;
+}
+
 .member-list {
   list-style: none;
   margin: 10px 0 0;
