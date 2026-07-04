@@ -38,6 +38,7 @@ const roomList = document.getElementById("roomList");
 const toast = document.getElementById("toast");
 const distributeAllBtn = document.getElementById("distributeAll");
 const setTopicAllBtn = document.getElementById("setTopicAll");
+const clearTopicAllBtn = document.getElementById("clearTopicAll");
 
 // 全ルーム一括配布（カード生成に依存しないので、ここで配線しておく）
 distributeAllBtn.addEventListener("click", (e) => {
@@ -47,6 +48,11 @@ distributeAllBtn.addEventListener("click", (e) => {
 // 全ルーム一括お題設定
 setTopicAllBtn.addEventListener("click", (e) => {
   handleSetTopicAll(e.currentTarget);
+});
+
+// 全ルーム一括お題クリア（お題なし）
+clearTopicAllBtn.addEventListener("click", (e) => {
+  handleClearTopicAll(e.currentTarget);
 });
 
 // 状態の日本語ラベル
@@ -444,6 +450,27 @@ async function handleSetTopicAll(button) {
     showToast(`全部屋のお題を「${topic}」にしました`);
   } catch (err) {
     console.error("一括お題設定に失敗:", err);
+    showToast("お題の設定に失敗しました。もう一度お試しください");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ------------------------------------------------------------
+// [全部屋のお題をなしにする] 全部屋のお題を一括で「お題なし」にする
+// （topicIndexは変えないので、次の「次のゲーム」はプリセットの続きに進む・確認なし）
+// ------------------------------------------------------------
+async function handleClearTopicAll(button) {
+  setButtonLoading(button, true);
+  try {
+    const batch = writeBatch(db);
+    ROOM_IDS.forEach((roomId) => {
+      batch.update(doc(db, "rooms", roomId), { currentTopic: "" });
+    });
+    await batch.commit();
+    showToast("全部屋のお題を「なし」にしました");
+  } catch (err) {
+    console.error("一括お題クリアに失敗:", err);
     showToast("お題の設定に失敗しました。もう一度お試しください");
   } finally {
     setButtonLoading(button, false);
